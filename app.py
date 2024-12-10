@@ -1,42 +1,59 @@
 from flask import Flask, render_template, request
-import pg8000
+import psycopg2
 
 app = Flask(__name__)
 
+
+# Connect to the PostgreSQL database
+def get_db_connection():
+    conn = psycopg2.connect(
+        dbname="asad",  # Replace with your actual database name
+        user="postgres",  # Replace with your database username
+        password="your_password",  # Replace with your password
+        host="localhost",
+        port="5432"
+    )
+    return conn
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
-    if request.method == "POST":
-        # Get the level from the form
-        level = request.form["level"]
-        return render_template("timetable.html", level=level, data=[], message="Loading timetable...")
-    
+    """Render the main index page."""
     return render_template("index.html")
+
 
 @app.route("/timetable", methods=["GET"])
 def timetable():
-    level = request.args.get('level')  # Get level from the query parameters
+    """Render the timetable page filtered by level."""
+    level = request.args.get("level")  # Get the selected level from the dropdown
     if not level:
         return "Level not provided", 400
 
-    # Connect to the PostgreSQL database
-    conn = pg8000.connect(
-        user="student", 
-        password="student_pass", 
-        host="localhost", 
-        port=5432, 
-        database="student"
-    )
-
+    # Connect to the database and fetch data
+    conn = get_db_connection()
     cur = conn.cursor()
-    query = "SELECT * FROM Timetable WHERE level = %s;"
+
+    # Fetch courses based on the selected level
+    query = """
+        SELECT id, course_name, day, time_slot, room
+        FROM timetable
+        WHERE level = %s;
+    """
     cur.execute(query, (level,))
     rows = cur.fetchall()
 
-    # Pass data to the template
-    if rows:
-        return render_template("timetable.html", level=level, data=rows, message="")
+    # Close database connection
+    cur.close()
+    conn.close()
+
+    # Prepare message for no data
+    if not rows:
+        message = f"No courses found for Level {level}."
     else:
-        return render_template("timetable.html", level=level, data=[], message="No data found for this level.")
+        message = None
+
+    # Render timetable.html with fetched data
+    return render_template("timetable.html", level=level, data=rows, message=message)
 
 
 if __name__ == "__main__":

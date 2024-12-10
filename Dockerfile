@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy the app directory to the container
-COPY ./app /app
+COPY . /app/
 
 # Upgrade pip and install the required Python packages
 RUN pip install --upgrade pip
